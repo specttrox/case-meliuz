@@ -3,6 +3,7 @@ import os
 import pandas as pd
 from datetime import datetime
 from scipy import stats
+import gspread
 
 def limpar_moeda(valor_str):
     if pd.isna(valor_str):
@@ -19,7 +20,6 @@ def calcular_significancia(df, grupo_vencedor, grupo_desafiante):
     lucros_vencedor = df[df["Grupos de usuários"] == grupo_vencedor]["lucro_diario_por_user"]
     lucros_desafiante = df[df["Grupos de usuários"] == grupo_desafiante]["lucro_diario_por_user"]
     
-    # Compara a variante líder contra a segunda melhor
     _, p_value = stats.ttest_ind(lucros_vencedor, lucros_desafiante, equal_var=False)
     
     significativo = p_value < 0.05
@@ -118,25 +118,44 @@ def gerar_relatorio_txt(df_agrupado, vencedor, parceiro, msg_estatistica, decisa
 def registrar_resultado(caminho_arquivo, vencedor, parceiro, status_csv, decisao):
     nome_teste = os.path.basename(caminho_arquivo)
     hoje = datetime.now().strftime("%Y-%m-%d")
+    lucro_str = f"R$ {vencedor['lucro_por_comprador']:.2f}"
     
+    # 1. Fallback Local (Sempre salva no CSV local como garantia)
     novo_dado = pd.DataFrame([{
         "Data do Registro": hoje,
         "Nome do Teste": nome_teste,
         "Parceiro": parceiro,
         "Variante Vencedora": vencedor["Grupos de usuários"],
-        "Lucro por Comprador": round(vencedor["lucro_por_comprador"], 2),
+        "Lucro por Comprador": lucro_str,
         "Confiança Estatística": status_csv,
         "Decisão": decisao
     }])
     
     arquivo_csv = "planilha_acompanhamento.csv"
-    
     if os.path.exists(arquivo_csv):
         novo_dado.to_csv(arquivo_csv, mode="a", header=False, index=False, encoding="utf-8-sig")
     else:
         novo_dado.to_csv(arquivo_csv, index=False, encoding="utf-8-sig")
         
-    print(f"Resultado registrado em: {arquivo_csv}")
+    print(f"Resultado registrado no backup local: {arquivo_csv}")
+    
+    # 2. Integração Cloud (Google Sheets)
+    try:
+        if not os.path.exists("credentials.json"):
+            print("Aviso: 'credentials.json' não encontrado. O envio para a nuvem foi pulado.")
+            return
+            
+        cliente = gspread.service_account(filename="credentials.json")
+        link_planilha = "https://docs.google.com/spreadsheets/d/1fN3F46cT74EOtC0XWnCxTPlmeUWcklmC1Q4fxJ9AjdE"
+        planilha = cliente.open_by_url(link_planilha).sheet1
+        
+        linha = [hoje, nome_teste, parceiro, vencedor["Grupos de usuários"], lucro_str, status_csv, decisao]
+        planilha.append_row(linha)
+        
+        print("Sucesso! Resultado sincronizado com o Google Sheets na nuvem.")
+        
+    except Exception as e:
+        print(f"Aviso: Falha ao sincronizar com o Google Sheets. (Erro: {e})")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analisador de Testes A/B - Méliuz")
