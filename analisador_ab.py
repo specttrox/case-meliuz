@@ -19,18 +19,23 @@ def calcular_significancia(df, grupo_vencedor, grupo_desafiante):
     lucros_vencedor = df[df["Grupos de usuários"] == grupo_vencedor]["lucro_diario_por_user"]
     lucros_desafiante = df[df["Grupos de usuários"] == grupo_desafiante]["lucro_diario_por_user"]
     
-    # Compara a variante com melhor métrica contra a segunda melhor
+    # Compara a variante líder contra a segunda melhor
     _, p_value = stats.ttest_ind(lucros_vencedor, lucros_desafiante, equal_var=False)
     
     significativo = p_value < 0.05
     confianca = (1 - p_value) * 100
     
+    if confianca >= 99.9:
+        conf_str = ">99.9"
+    else:
+        conf_str = f"{confianca:.1f}"
+    
     if significativo:
-        mensagem = f"Alta ({confianca:.1f}% de confiança). A diferença de performance da Variante Líder é estatisticamente válida."
+        mensagem = f"Alta ({conf_str}% de confiança). A superioridade da Variante Líder é consistente e não é obra do acaso."
         decisao = f"Escalar {grupo_vencedor}"
         status_csv = "Significativo"
     else:
-        mensagem = f"Baixa ({confianca:.1f}% de confiança). Não há distância estatística suficiente para confirmar a liderança."
+        mensagem = f"Baixa ({conf_str}% de confiança). A diferença para a segunda colocada pode ser acaso."
         decisao = f"Inconclusivo (Requer mais dados)"
         status_csv = "Inconclusivo"
         
@@ -60,12 +65,6 @@ def analisar_dados(caminho_arquivo):
     agrupado["lucro_por_comprador"] = agrupado["receita_liquida"] / agrupado["compradores"]
     agrupado["gmv_por_comprador"] = agrupado["vendas_totais"] / agrupado["compradores"]
     
-    # Calcula ROI (Retorno sobre o Investimento)
-    agrupado["roi"] = agrupado.apply(
-        lambda row: (row["receita_liquida"] / row["cashback"]) * 100 if row["cashback"] > 0 else 0, axis=1
-    )
-    
-    # Ordena pelo Lucro por Comprador decrescente
     agrupado = agrupado.sort_values(by="lucro_por_comprador", ascending=False).reset_index(drop=True)
     
     vencedor = agrupado.iloc[0]
@@ -91,29 +90,24 @@ def gerar_relatorio_txt(df_agrupado, vencedor, parceiro, msg_estatistica, decisa
         "## 2. Detalhamento de Métricas (Acumulado)",
     ]
     
-    for idx, row in df_agrupado.iterrows():
-        # Adiciona um marcador de liderança apenas por texto, sem emojis
+    for _, row in df_agrupado.iterrows():
         marcador = " [Variante Líder]" if row['Grupos de usuários'] == vencedor['Grupos de usuários'] else ""
         
         linhas_relatorio.append(f"### {row['Grupos de usuários']}{marcador}")
         linhas_relatorio.append(f"- **Tamanho da Amostra:** {int(row['compradores'])} usuários compradores")
         linhas_relatorio.append(f"- **Lucro Médio (Métrica Principal):** R$ {row['lucro_por_comprador']:.2f} por usuário")
         linhas_relatorio.append(f"- **Lucro Absoluto Total:** R$ {row['receita_liquida']:,.2f}")
-        linhas_relatorio.append(f"- **ROI do Cashback:** {row['roi']:.1f}%")
         linhas_relatorio.append(f"- **Vendas Totais (GMV) Médio:** R$ {row['gmv_por_comprador']:.2f} por usuário")
         linhas_relatorio.append("")
         
     linhas_relatorio.append("## 3. Entendendo as Métricas e a Decisão")
     linhas_relatorio.append("")
-    linhas_relatorio.append("**A. Lucro Médio por Usuário (Métrica Rei)**")
-    linhas_relatorio.append("A decisão não é baseada no lucro absoluto total, pois os grupos possuem volumes de tráfego diferentes. Dividir a receita líquida total pelo número de compradores garante que estamos comparando a eficiência intrínseca de cada grupo.")
+    linhas_relatorio.append("**A. Lucro Médio por Usuário (Métrica Principal)**")
+    linhas_relatorio.append("Dividir a receita líquida total pelo número de compradores garante uma comparação justa entre grupos, mesmo que eles tenham volumes de tráfego diferentes.")
     linhas_relatorio.append("")
-    linhas_relatorio.append("**B. ROI do Cashback (Retorno sobre Investimento)**")
-    linhas_relatorio.append("Representa a relação entre a Receita Líquida gerada e o custo do Cashback pago. Um ROI de 150%, por exemplo, significa que para cada R$ 1,00 gasto pelo Méliuz com cashback nesta variante, a empresa obteve R$ 1,50 de lucro líquido. É um indicador vital da saúde financeira do incentivo.")
-    linhas_relatorio.append("")
-    linhas_relatorio.append("**C. Significância Estatística (P-Value)**")
-    linhas_relatorio.append("Na ciência de dados, não basta uma variante ter um lucro médio maior que as outras; é necessário provar matematicamente (através do Teste-T) que essa diferença não ocorreu por puro acaso ou por distorções pontuais de poucos usuários que compraram muito.")
-    linhas_relatorio.append("Comparamos sempre a Variante Líder com a segunda melhor variante. Se a confiança for menor que 95%, o teste é classificado como 'Inconclusivo', o que impede a escala imediata da variante e recomenda que o teste continue rodando para coletar mais dados.")
+    linhas_relatorio.append("**B. Significância Estatística e o Efeito do Acaso**")
+    linhas_relatorio.append("Olhar apenas para a média final de lucro pode ser enganoso se uma variante foi impactada por distorções pontuais, como um 'super usuário' que sozinho realizou uma compra gigantesca em um único dia. Isso faria a variante parecer vitoriosa apenas por sorte (acaso).")
+    linhas_relatorio.append("Utilizamos o Teste-T para analisar não apenas o lucro final, mas a consistência dos dados diários. Se o nível de confiança for inferior a 95%, o teste é classificado como 'Inconclusivo', indicando que o resultado pode ter sido sorte e recomendando-se aguardar mais dados.")
     
     nome_arquivo = f"relatorio_{parceiro.replace(' ', '')}.md"
     with open(nome_arquivo, "w", encoding="utf-8") as f:
