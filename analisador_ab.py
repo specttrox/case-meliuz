@@ -109,7 +109,8 @@ def gerar_relatorio_txt(df_agrupado, vencedor, parceiro, msg_estatistica, decisa
     linhas_relatorio.append("Olhar apenas para a média final de lucro pode ser enganoso se uma variante foi impactada por distorções pontuais, como um 'super usuário' que sozinho realizou uma compra gigantesca em um único dia. Isso faria a variante parecer vitoriosa apenas por sorte (acaso).")
     linhas_relatorio.append("Utilizamos o Teste-T para analisar não apenas o lucro final, mas a consistência dos dados diários. Se o nível de confiança for inferior a 95%, o teste é classificado como 'Inconclusivo', indicando que o resultado pode ter sido sorte e recomendando-se aguardar mais dados.")
     
-    nome_arquivo = f"relatorio_{parceiro.replace(' ', '')}.md"
+    os.makedirs("relatorios", exist_ok=True)
+    nome_arquivo = os.path.join("relatorios", f"relatorio_{parceiro.replace(' ', '')}.md")
     with open(nome_arquivo, "w", encoding="utf-8") as f:
         f.write("\n".join(linhas_relatorio))
     
@@ -131,7 +132,8 @@ def registrar_resultado(caminho_arquivo, vencedor, parceiro, status_csv, decisao
         "Decisão": decisao
     }])
     
-    arquivo_csv = "planilha_acompanhamento.csv"
+    os.makedirs("dados", exist_ok=True)
+    arquivo_csv = os.path.join("dados", "planilha_acompanhamento.csv")
     if os.path.exists(arquivo_csv):
         novo_dado.to_csv(arquivo_csv, mode="a", header=False, index=False, encoding="utf-8-sig")
     else:

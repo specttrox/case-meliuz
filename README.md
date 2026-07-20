@@ -60,4 +60,10 @@ Como prova conceitual do envio de dados em nuvem, foi criada uma planilha de des
   Em testes A/B, o volume de tráfego injetado em cada variante pode ser diferente. A métrica de "Lucro Médio por Comprador" normaliza a base, revelando a rentabilidade intrínseca da variante e respondendo com segurança à pergunta _"Qual devemos escalar para 100%?"_.
 
 - **Significância Estatística (Teste-T)**
-  Um único "super comprador" poderia distorcer um dia inteiro e dar a vitória a um grupo por puro acaso. O algoritmo usa `scipy.stats.ttest_ind` comparando o dia a dia da Variante Líder com a 2ª melhor variante. Caso a confiança seja menor que 95%, o teste trava a escalabilidade, definindo a decisão como **"Inconclusivo"**.
+Não basta ter a maior média. Um único "super comprador" poderia distorcer um dia inteiro e dar a vitória a um grupo por puro acaso. O algoritmo usa `scipy.stats.ttest_ind` comparando o dia a dia da Variante Líder com a 2ª melhor variante. Caso a confiança seja menor que 95%, o teste trava a escalabilidade, definindo a decisão como **"Inconclusivo"**.
+
+---
+
+## 🤖 Declaração de Transparência de Uso de IA
+
+Alinhado com a proposta da vaga, utilizei ferramentas de IA (LLMs) gratuitas como assistentes de codificação para escrever parte do código Python e formatar este documento mais rapidamente. Porém, todo o raciocínio analítico e as decisões de negócios foram meus. Por exemplo, o direcionamento de usar o Lucro por Usuário em vez do Lucro Total, a decisão de inserir e remover o ROI para evitar distrações na métrica central, a identificação do problema dos "super compradores" (que exigiu a implementação do Teste-T para não validar o acaso) e a percepção da pegadinha do Lucro Zero no Grupo 2 do Parceiro C foram frutos da minha própria análise crítica dos dados. A disciplina de Estatística e Probabilidade que paguei no começo da universidade ajudou nessa análise.
